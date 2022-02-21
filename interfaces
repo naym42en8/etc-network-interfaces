@@ -1,0 +1,116 @@
+# OpenStack Networking VLAN bridge
+####################################################
+auto br-vlan
+allow-ovs br-vlan
+iface br-vlan inet manual
+  ovs_type OVSBridge
+  ovs_ports enp2s0 br-mgmt-downlink br-vxlan-downlink br-storage-downlink br-flat-downlink
+  up ip link set dev $IFACE up
+  down ip link set dev $IFACE down
+
+# OpenStack Networking VLAN bridge Uplink
+####################################################
+allow-br-vlan enp2s0
+iface enp2s0 inet manual
+  ovs_bridge br-vlan
+  ovs_type OVSPort
+  up ip link set dev $IFACE up
+  down ip link set dev $IFACE down
+
+# Down-link Patch Ports:
+####################################################
+allow-br-vlan br-mgmt-downlink
+iface br-mgmt-downlink inet manual
+  ovs_bridge br-vlan
+  ovs_type OVSPatchPort
+  ovs_patch_peer br-mgmt-uplink
+
+allow-br-vlan br-vxlan-downlink
+iface br-vxlan-downlink inet manual
+  ovs_bridge br-vlan
+  ovs_type OVSPatchPort
+  ovs_patch_peer br-vxlan-uplink
+
+allow-br-vlan br-storage-downlink
+iface br-storage-downlink inet manual
+  ovs_bridge br-vlan
+  ovs_type OVSPatchPort
+  ovs_patch_peer br-storage-uplink
+
+allow-br-vlan br-flat-downlink
+iface br-flat-downlink inet manual
+  ovs_bridge br-vlan
+  ovs_type OVSPatchPort
+  ovs_patch_peer br-flat-uplink
+
+# Management Bridge
+####################################################
+auto br-mgmt
+allow-ovs br-mgmt
+iface br-mgmt inet static
+  ovs_type OVSBridge
+  ovs_ports br-mgmt-uplink
+  address 192.168.41.23/24
+  gateway 192.168.41.1
+  up ip link set dev $IFACE up
+  down ip link set dev $IFACE down
+  post-up ovs-vsctl set port $IFACE tag=41
+
+allow-br-mgmt br-mgmt-uplink
+iface br-mgmt-uplink inet manual
+  ovs_bridge br-mgmt
+  ovs_type OVSPatchPort
+  ovs_patch_peer br-mgmt-downlink
+
+# iSCSI Network
+####################################################
+auto br-storage
+allow-ovs br-storage
+iface br-storage inet static
+  ovs_type OVSBridge
+  ovs_ports br-storage-uplink
+  address 192.168.42.23/24
+  up ip link set dev $IFACE up
+  down ip link set dev $IFACE down
+  post-up ovs-vsctl set port $IFACE tag=42
+
+allow-br-storage br-storage-uplink
+iface br-storage-uplink inet manual
+  ovs_bridge br-storage
+  ovs_type OVSPatchPort
+  ovs_patch_peer br-storage-downlink
+
+# VXLAN VTEP
+####################################################
+auto br-vxlan
+allow-ovs br-vxlan
+iface br-vxlan inet static
+  ovs_type OVSBridge
+  ovs_ports br-vxlan-uplink
+  address 192.168.43.23/24
+  up ip link set dev $IFACE up
+  down ip link set dev $IFACE down
+  post-up ovs-vsctl set port $IFACE tag=43
+
+allow-br-vxlan br-vxlan-uplink
+iface br-vxlan-uplink inet manual
+  ovs_bridge br-vxlan
+  ovs_type OVSPatchPort
+  ovs_patch_peer br-vxlan-downlink
+
+# Openstack "FLAT" Layer2
+####################################################
+auto br-flat
+allow-ovs br-flat
+iface br-flat inet manual
+  ovs_type OVSBridge
+  ovs_ports br-flat-uplink
+  up ip link set dev $IFACE up
+  down ip link set dev $IFACE down
+  post-up ovs-vsctl set port br-flat tag=40
+
+allow-br-flat br-flat-uplink
+iface br-flat-uplink inet manual
+  ovs_bridge br-flat
+  ovs_type OVSPatchPort
+  ovs_patch_peer br-flat-downlink
